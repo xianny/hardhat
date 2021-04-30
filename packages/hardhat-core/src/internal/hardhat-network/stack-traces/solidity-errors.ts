@@ -52,7 +52,7 @@ export async function wrapWithSolidityErrorsCorrection(
 }
 
 export function encodeSolidityStackTrace(
-  fallbackMessage: string,
+  fallbackMessage: string, // fvtodo esto no debería ser un fallback si hay returnData
   stackTrace: SolidityStackTrace,
   previousStack?: NodeJS.CallSite[]
 ): SolidityError {

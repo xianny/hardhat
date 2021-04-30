@@ -1,51 +1,51 @@
 import VM from "@ethereumjs/vm";
-import { assert } from "chai";
-import { BN, toBuffer } from "ethereumjs-util";
+import {assert} from "chai";
+import {BN, toBuffer} from "ethereumjs-util";
 import fs from "fs";
 import path from "path";
 import semver from "semver";
 
-import { createModelsAndDecodeBytecodes } from "../../../../src/internal/hardhat-network/stack-traces/compiler-to-model";
+import {createModelsAndDecodeBytecodes} from "../../../../src/internal/hardhat-network/stack-traces/compiler-to-model";
 import {
   ConsoleLogger,
-  ConsoleLogs,
+  ConsoleLogs
 } from "../../../../src/internal/hardhat-network/stack-traces/consoleLogger";
-import { ContractsIdentifier } from "../../../../src/internal/hardhat-network/stack-traces/contracts-identifier";
+import {ContractsIdentifier} from "../../../../src/internal/hardhat-network/stack-traces/contracts-identifier";
 import {
   printMessageTrace,
-  printStackTrace,
+  printStackTrace
 } from "../../../../src/internal/hardhat-network/stack-traces/debug";
-import { linkHexStringBytecode } from "../../../../src/internal/hardhat-network/stack-traces/library-utils";
+import {linkHexStringBytecode} from "../../../../src/internal/hardhat-network/stack-traces/library-utils";
 import {
   CallMessageTrace,
   CreateMessageTrace,
-  MessageTrace,
+  MessageTrace
 } from "../../../../src/internal/hardhat-network/stack-traces/message-trace";
-import { decodeRevertReason } from "../../../../src/internal/hardhat-network/stack-traces/revert-reasons";
+import {decodeRevertReason} from "../../../../src/internal/hardhat-network/stack-traces/revert-reasons";
 import {
   SolidityStackTraceEntry,
-  StackTraceEntryType,
+  StackTraceEntryType
 } from "../../../../src/internal/hardhat-network/stack-traces/solidity-stack-trace";
-import { SolidityTracer } from "../../../../src/internal/hardhat-network/stack-traces/solidityTracer";
-import { VmTraceDecoder } from "../../../../src/internal/hardhat-network/stack-traces/vm-trace-decoder";
+import {SolidityTracer} from "../../../../src/internal/hardhat-network/stack-traces/solidityTracer";
+import {VmTraceDecoder} from "../../../../src/internal/hardhat-network/stack-traces/vm-trace-decoder";
 import {
   CompilerInput,
   CompilerOutput,
-  CompilerOutputBytecode,
+  CompilerOutputBytecode
 } from "../../../../src/types";
-import { setCWD } from "../helpers/cwd";
+import {setCWD} from "../helpers/cwd";
 
 import {
   compile,
   COMPILER_DOWNLOAD_TIMEOUT,
   CompilerOptions,
-  downloadSolc,
+  downloadSolc
 } from "./compilation";
 import {
   encodeCall,
   encodeConstructorParams,
   instantiateVm,
-  traceTransaction,
+  traceTransaction
 } from "./execution";
 
 interface StackFrameDescription {
@@ -126,12 +126,12 @@ function defineTest(
     testDefinition.solc !== undefined &&
     !semver.satisfies(compilerOptions.solidityVersion, testDefinition.solc);
 
-  const func = async function (this: Mocha.Context) {
+  const func = async function(this: Mocha.Context) {
     this.timeout(TEST_TIMEOUT_MILLIS);
 
     await runTest(dirPath, testDefinition, sources, {
       ...compilerOptions,
-      runs,
+      runs
     });
   };
 
@@ -148,11 +148,11 @@ function defineTest(
 }
 
 function defineDirTests(dirPath: string, compilerOptions: CompilerOptions) {
-  describe(path.basename(dirPath), function () {
-    const files = fs.readdirSync(dirPath).map((f) => path.join(dirPath, f));
+  describe(path.basename(dirPath), function() {
+    const files = fs.readdirSync(dirPath).map(f => path.join(dirPath, f));
 
-    const sources = files.filter((f) => f.endsWith(".sol"));
-    const dirs = files.filter((f) => fs.statSync(f).isDirectory());
+    const sources = files.filter(f => f.endsWith(".sol"));
+    const dirs = files.filter(f => fs.statSync(f).isDirectory());
     const testPath = path.join(dirPath, "test.json");
 
     if (fs.existsSync(testPath)) {
@@ -167,7 +167,7 @@ function defineDirTests(dirPath: string, compilerOptions: CompilerOptions) {
         }
       }
 
-      describe("Without optimizations", function () {
+      describe("Without optimizations", function() {
         defineTest(dirPath, testDefinition, sources, compilerOptions);
       });
 
@@ -175,7 +175,7 @@ function defineDirTests(dirPath: string, compilerOptions: CompilerOptions) {
         const runsNumbers = [1, 200, 10000];
 
         for (const runs of runsNumbers) {
-          describe(`With optimizations (${runs} run)`, function () {
+          describe(`With optimizations (${runs} run)`, function() {
             defineTest(dirPath, testDefinition, sources, compilerOptions, runs);
           });
         }
@@ -193,9 +193,9 @@ async function compileIfNecessary(
   sources: string[],
   compilerOptions: CompilerOptions
 ): Promise<[CompilerInput, CompilerOutput]> {
-  const { solidityVersion, runs } = compilerOptions;
+  const {solidityVersion, runs} = compilerOptions;
   const maxSourceCtime = sources
-    .map((s) => fs.statSync(s).ctimeMs)
+    .map(s => fs.statSync(s).ctimeMs)
     .reduce((t1, t2) => Math.max(t1, t2), 0);
 
   const artifacts = path.join(testDir, "artifacts");
@@ -247,6 +247,12 @@ function compareStackTraces(
   description: StackFrameDescription[],
   runs: number | undefined
 ) {
+  assert.equal(
+    trace.length,
+    description.length,
+    `Expected a trace of length ${description.length} but got one with length ${trace.length}`
+  );
+
   for (let i = 0; i < trace.length; i++) {
     const actual = trace[i];
     const expected = description[i];
@@ -408,7 +414,7 @@ async function runTest(
         txIndexToContract.set(txIndex, {
           file: tx.file,
           name: tx.contract,
-          address: trace.deployedContract,
+          address: trace.deployedContract
         });
       }
     } else {
@@ -445,7 +451,7 @@ async function runTest(
         );
       }
     } catch (error) {
-      printMessageTrace(decodedTrace);
+      // printMessageTrace(decodedTrace);
 
       throw error;
     }
@@ -462,10 +468,10 @@ async function runTest(
         );
         if (testDefinition.print !== undefined && testDefinition.print) {
           console.log(`Transaction ${txIndex} stack trace`);
-          printStackTrace(stackTrace);
+          // printStackTrace(stackTrace);
         }
       } catch (err) {
-        printMessageTrace(decodedTrace);
+        // printMessageTrace(decodedTrace);
         printStackTrace(stackTrace);
 
         throw err;
@@ -477,7 +483,7 @@ async function runTest(
 function linkBytecode(
   txIndex: number,
   bytecode: CompilerOutputBytecode,
-  libs: { [file: string]: { [lib: string]: number } },
+  libs: {[file: string]: {[lib: string]: number}},
   txIndexToContract: Map<number, DeployedContract>
 ): Buffer {
   let code = bytecode.object;
@@ -564,7 +570,7 @@ async function runDeploymentTransactionTest(
   const trace = await traceTransaction(vm, {
     value: tx.value,
     data,
-    gasLimit: tx.gas,
+    gasLimit: tx.gas
   });
 
   return trace as CreateMessageTrace;
@@ -598,7 +604,7 @@ async function runCallTransactionTest(
     to: contract.address,
     value: tx.value,
     data,
-    gasLimit: tx.gas,
+    gasLimit: tx.gas
   });
 
   return trace as CallMessageTrace;
@@ -607,18 +613,18 @@ async function runCallTransactionTest(
 const solidity05Compilers: CompilerOptions[] = [
   {
     solidityVersion: "0.5.1",
-    compilerPath: "soljson-v0.5.1+commit.c8a2cb62.js",
+    compilerPath: "soljson-v0.5.1+commit.c8a2cb62.js"
   },
   {
     solidityVersion: "0.5.17",
-    compilerPath: "soljson-v0.5.17+commit.d19bba13.js",
-  },
+    compilerPath: "soljson-v0.5.17+commit.d19bba13.js"
+  }
 ];
 
 const solidity06Compilers: CompilerOptions[] = [
   {
     solidityVersion: "0.6.0",
-    compilerPath: "soljson-v0.6.0+commit.26b70077.js",
+    compilerPath: "soljson-v0.6.0+commit.26b70077.js"
   },
   // {
   //   solidityVersion: "0.6.1",
@@ -632,7 +638,7 @@ const solidity06Compilers: CompilerOptions[] = [
   // sourcemaps work
   {
     solidityVersion: "0.6.3",
-    compilerPath: "soljson-v0.6.3+commit.8dda9521.js",
+    compilerPath: "soljson-v0.6.3+commit.8dda9521.js"
   },
   // {
   //   solidityVersion: "0.6.4",
@@ -668,25 +674,25 @@ const solidity06Compilers: CompilerOptions[] = [
   // },
   {
     solidityVersion: "0.6.12",
-    compilerPath: "soljson-v0.6.12+commit.27d51765.js",
-  },
+    compilerPath: "soljson-v0.6.12+commit.27d51765.js"
+  }
 ];
 
 const solidity07Compilers: CompilerOptions[] = [
   {
     solidityVersion: "0.7.0",
-    compilerPath: "soljson-v0.7.0+commit.9e61f92b.js",
-  },
+    compilerPath: "soljson-v0.7.0+commit.9e61f92b.js"
+  }
 ];
 
 const solidity08Compilers: CompilerOptions[] = [
   {
     solidityVersion: "0.8.0",
-    compilerPath: "soljson-v0.8.0+commit.c7dfd78e.js",
-  },
+    compilerPath: "soljson-v0.8.0+commit.c7dfd78e.js"
+  }
 ];
 
-describe("Stack traces", function () {
+describe.only("Stack traces", function() {
   setCWD();
 
   // if a path to a solc file was specified, we only run these tests and use
@@ -702,10 +708,10 @@ describe("Stack traces", function () {
       process.exit(1);
     }
 
-    describe.only(`Use compiler at ${customSolcPath} with version ${customSolcVersion}`, function () {
+    describe.only(`Use compiler at ${customSolcPath} with version ${customSolcVersion}`, function() {
       const compilerOptions = {
         solidityVersion: customSolcVersion,
-        compilerPath: customSolcPath,
+        compilerPath: customSolcPath
       };
 
       const testsDir = semver.satisfies(customSolcVersion, "^0.5.0")
@@ -737,12 +743,12 @@ describe("Stack traces", function () {
     return;
   }
 
-  before("Download solcjs binaries", async function () {
+  before("Download solcjs binaries", async function() {
     const paths = new Set([
-      ...solidity05Compilers.map((c) => c.compilerPath),
-      ...solidity06Compilers.map((c) => c.compilerPath),
-      ...solidity07Compilers.map((c) => c.compilerPath),
-      ...solidity08Compilers.map((c) => c.compilerPath),
+      ...solidity05Compilers.map(c => c.compilerPath),
+      ...solidity06Compilers.map(c => c.compilerPath),
+      ...solidity07Compilers.map(c => c.compilerPath),
+      ...solidity08Compilers.map(c => c.compilerPath)
     ]);
 
     this.timeout(paths.size * COMPILER_DOWNLOAD_TIMEOUT);
@@ -763,7 +769,7 @@ function defineTestForSolidityMajorVersion(
   testsPath: string
 ) {
   for (const compilerOptions of solcVersionsCompilerOptions) {
-    describe(`Use compiler ${compilerOptions.compilerPath}`, function () {
+    describe(`Use compiler ${compilerOptions.compilerPath}`, function() {
       defineDirTests(
         path.join(__dirname, "test-files", testsPath),
         compilerOptions
