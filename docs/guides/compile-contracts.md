@@ -56,7 +56,7 @@ If any of your contracts has a version pragma that is not satisfied by the compi
 
 ### Multiple Solidity versions
 
-Hardhat supports projects that use different, incompatible versions of solc. For example, if you have a project where some files use Solidity 0.5 and others use 0.6, you can configure Hardhat to use compiler versions compatible with those files like this:
+Hardhat supports projects that use different, incompatible versions of solc, as long as those files don't depend on each other. For example, if you have a project where some files use Solidity 0.5 and others use 0.6, you can configure Hardhat to use compiler versions compatible with those files like this:
 
 ```js
 module.exports = {
@@ -97,6 +97,13 @@ In this case, `contracts/Foo.sol` will be compiled with solc 0.5.5, no matter wh
 Keep in mind that:
 - Overrides are full compiler configurations, so if you have any additional settings you're using you should set them for the override as well.
 - You have to use forward slashes (`/`) even if you are on Windows.
+
+#### Incompatible versions
+
+If a file in your project imports another file with a different and incompatible version of Solidity, you won't be able to compile them. Hardhat support for multiple compilers can't help you here. Instead, you need to make sure that there are no incompatible imports:
+
+- If both files are part of your project, you need to upgrade their version pragmas to be compatible. For example, if you have a file `Exchange.sol` with version `^0.7.0` that imports a `Token.sol` file with version `^0.8.0`, you need to change one of them to use a version range compatible with the other's.
+- If one of the files is a third-party dependency, you need to update the version pragmas in your project to be compatible with that dependency. Alternatively, you can upgrade (or downgrade) the dependency to a version that is compatible with your project. For example, if your contracts have a version range of `^0.7.0` but you installed a version of [`@openzeppelin/contracts`](https://openzeppelin.com/contracts/) that uses Solidity `^0.8.0`, you need to either change the version used by your files or downgrade the Open Zeppelin dependency to a version that uses `^0.7.0`.
 
 ## Artifacts
  

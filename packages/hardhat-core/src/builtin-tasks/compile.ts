@@ -1120,7 +1120,7 @@ subtask(TASK_COMPILE_SOLIDITY_GET_COMPILATION_JOBS_FAILURE_REASONS)
       }
 
       if (directlyImportsIncompatibleFile.length > 0) {
-        errorMessage += `These files import other files that use a different and incompatible version of Solidity:
+        errorMessage += `These files import other files that use a different and incompatible version of Solidity (https://hardhat.org/guides/compile-contracts.html#incompatible-versions):
 
 `;
 
@@ -1165,7 +1165,7 @@ subtask(TASK_COMPILE_SOLIDITY_GET_COMPILATION_JOBS_FAILURE_REASONS)
       }
 
       if (indirectlyImportsIncompatibleFile.length > 0) {
-        errorMessage += `These files depend on other files that use a different and incompatible version of Solidity:
+        errorMessage += `These files depend on other files that use a different and incompatible version of Solidity (https://hardhat.org/guides/compile-contracts.html#incompatible-versions):
 
 `;
 
