@@ -1205,10 +1205,7 @@ Hardhat Network's forking functionality only works with blocks from at least spu
     }
 
     if (error.error === ERROR.OUT_OF_GAS) {
-      if (
-        stackTrace !== undefined &&
-        this._isContractTooLargeStackTrace(stackTrace)
-      ) {
+      if (stackTrace !== undefined) {
         return encodeSolidityStackTrace(
           "Transaction ran out of gas",
           stackTrace

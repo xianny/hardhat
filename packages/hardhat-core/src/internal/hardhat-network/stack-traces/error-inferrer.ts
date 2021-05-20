@@ -171,8 +171,24 @@ export class ErrorInferrer {
       this._checkNonContractCalled(trace, stacktrace) ??
       this._checkSolidity063UnmappedRevert(trace, stacktrace) ??
       this._checkContractTooLarge(trace, stacktrace) ??
+      this._checkOutOfGas(trace, stacktrace) ??
       this._otherExecutionErrorStacktrace(trace, stacktrace)
     );
+  }
+
+  private _checkOutOfGas(
+    trace: DecodedEvmMessageTrace,
+    stacktrace: SolidityStackTrace
+  ): SolidityStackTrace | undefined {
+    if (trace.error?.error === ERROR.OUT_OF_GAS) {
+      const frame: CustomErrorStackTraceEntry = {
+        type: StackTraceEntryType.CUSTOM_ERROR,
+        sourceReference: this._getLastSourceReference(trace)!,
+        message: "OUT OF GAS",
+        isInvalidOpcodeError: false,
+      };
+      return [...stacktrace, frame];
+    }
   }
 
   public filterRedundantFrames(
