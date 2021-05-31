@@ -28,20 +28,20 @@ export const optionalRpcHardhatNetworkConfig = optional(
   rpcHardhatNetworkConfig
 );
 
-const positiveIntegerDefaultingToOne = new t.Type<number, number, unknown>(
+const positiveInteger = new t.Type<number, number, unknown>(
   "Positive integer",
   (x: unknown): x is number => Number.isInteger(x),
-  (x: unknown) => {
+  (x, c) => {
     return Number.isInteger(x) && (x as number) > 0
       ? t.success(x as number)
-      : t.success(1);
+      : t.failure(x, c);
   },
   t.identity
 );
 
 export const hardhatMineParamsWithDefaults = t.type({
-  blocks: positiveIntegerDefaultingToOne,
-  interval: positiveIntegerDefaultingToOne,
+  blocks: optional(positiveInteger),
+  interval: optional(positiveInteger),
 });
 
 export type HardhatMineActionParams = t.TypeOf<

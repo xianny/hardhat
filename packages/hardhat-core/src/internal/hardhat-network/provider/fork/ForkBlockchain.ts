@@ -19,7 +19,10 @@ import {
 } from "../output";
 import { ReadOnlyValidEIP2930Transaction } from "../transactions/ReadOnlyValidEIP2930Transaction";
 import { ReadOnlyValidTransaction } from "../transactions/ReadOnlyValidTransaction";
-import { HardhatBlockchainInterface } from "../types/HardhatBlockchainInterface";
+import {
+  BlockRange,
+  HardhatBlockchainInterface,
+} from "../types/HardhatBlockchainInterface";
 
 import { rpcToBlockData } from "./rpcToBlockData";
 import { rpcToTxData } from "./rpcToTxData";
@@ -79,7 +82,7 @@ export class ForkBlockchain implements HardhatBlockchainInterface {
     return block;
   }
 
-  public async addBlockRange(blocks: number, interval: number): Promise<void> {
+  public async addBlockRange(range: BlockRange): Promise<void> {
     // todo (xianny):
   }
 

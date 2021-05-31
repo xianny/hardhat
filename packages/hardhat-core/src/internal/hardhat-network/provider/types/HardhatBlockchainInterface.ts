@@ -1,12 +1,20 @@
 import { Block } from "@ethereumjs/block";
 import { BlockchainInterface } from "@ethereumjs/blockchain";
-import { BN } from "ethereumjs-util";
+import { Address, BN } from "ethereumjs-util";
 
 import { FilterParams } from "../node-types";
 import { RpcLogOutput, RpcReceiptOutput } from "../output";
 
+export interface BlockRange {
+  start: BN;
+  end: BN;
+  startTimestamp: BN;
+  stateRoot: Buffer;
+  interval: number;
+  coinbaseAddress: Address;
+}
 export interface HardhatBlockchainInterface extends BlockchainInterface {
-  addBlockRange(blocks: number, interval: number): void;
+  addBlockRange(range: BlockRange): void;
   addTransactionReceipts(receipts: RpcReceiptOutput[]): void;
   deleteLaterBlocks(block: Block): void;
   getBlockByTransactionHash(transactionHash: Buffer): Promise<Block | null>;

@@ -403,8 +403,18 @@ Hardhat Network's forking functionality only works with blocks from at least spu
     return result;
   }
 
-  public async addBlockRange(blocks: number, interval: number) {
-    // todo(xianny): mine pending txs; create blockrange
+  public async addBlockRange(
+    blocks: number,
+    interval: number
+  ): Promise<Block | undefined> {
+    if (blocks === 0) {
+      // this shouldn't happen
+      return;
+    }
+    if (blocks === 1) {
+      return (await this.mineBlock()).block;
+    }
+
     let minedBlocks = 0;
     while (
       this._txPool.hasPendingTransactions() ||
@@ -416,11 +426,24 @@ Hardhat Network's forking functionality only works with blocks from at least spu
         // todo(xianny): check if success?
         break;
       }
-      minedBlocks++;
+      minedBlocks = minedBlocks + 1;
     }
-    this._blockchain.addBlockRange(blocks, interval!);
-    // todo(xianny): do stuff with this._vm and/or this._stateManager too?
-    return this._blockchain.getLatestBlock(); // todo(xianny): more appropriate return?
+
+    const latest = await this._blockchain.getLatestBlock();
+    const start = latest.header.number.add(new BN(1));
+    const range = {
+      start,
+      end: start.add(new BN(blocks - minedBlocks)),
+      interval,
+      startTimestamp: latest.header.timestamp.add(new BN(interval)),
+      coinbaseAddress: this.getCoinbaseAddress(),
+      stateRoot: await this._stateManager.getStateRoot(),
+    };
+    this._blockchain.addBlockRange(range);
+    // todo(xianny): update balance for coinbase address
+    // todo(xianny): update block time offset?
+    // todo (xianny): does statemanager need to be committed??
+    return this._blockchain.getLatestBlock();
   }
 
   public async runCall(

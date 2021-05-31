@@ -5,32 +5,144 @@ import { BN, zeros } from "ethereumjs-util";
 import { BlockchainData } from "./BlockchainData";
 import { FilterParams } from "./node-types";
 import { RpcLogOutput, RpcReceiptOutput } from "./output";
-import { HardhatBlockchainInterface } from "./types/HardhatBlockchainInterface";
+import {
+  BlockRange,
+  HardhatBlockchainInterface,
+} from "./types/HardhatBlockchainInterface";
 
 /* tslint:disable only-hardhat-error */
+class BlockRangeManager {
+  private _data: BlockRange[] = new Array(); // start block -> blockRange; ascending order
 
+  constructor(private readonly _blockchainData: BlockchainData) {}
+
+  public addRange(range: BlockRange): void {
+    const last = this._data[this._data.length - 1];
+    if (range.start.lte(last.end)) {
+      throw new Error(
+        `Invalid block range. Range must start after latest block. Expected start greater than ${last.end}; received ${range.start}`
+      );
+    }
+    this._data.push(range);
+  }
+
+  public async getBlock(blockNumber: BN): Promise<Block | undefined> {
+    const rIndex = this._data.findIndex(({ start, end }) => {
+      return blockNumber.gte(start) && blockNumber.lte(end);
+    });
+    if (rIndex === -1) {
+      return undefined;
+    }
+    const range = this._data[rIndex];
+    const newBlock = await this._createBlockInRange(blockNumber, range);
+    const totalDifficulty = this._computeTotalDifficulty(newBlock);
+    this._blockchainData.addBlock(newBlock, totalDifficulty);
+
+    let newRanges: BlockRange[] = [];
+    const one = new BN(1);
+    if (range.start.eq(blockNumber)) {
+      newRanges = [
+        {
+          ...range,
+          start: blockNumber.add(one),
+          startTimestamp: range.startTimestamp.add(new BN(range.interval)),
+        },
+      ];
+    } else if (range.end.eq(blockNumber)) {
+      newRanges = [
+        {
+          ...range,
+          end: range.end.sub(one),
+        },
+      ];
+    } else {
+      newRanges = [
+        {
+          ...range,
+          end: blockNumber.sub(one),
+        },
+        {
+          ...range,
+          start: blockNumber.add(one),
+          startTimestamp: newBlock.header.timestamp.add(new BN(range.interval)),
+        },
+      ];
+    }
+    this._data.splice(rIndex, 1, ...newRanges);
+    return newBlock;
+  }
+
+  private async _createBlockInRange(
+    blockNumber: BN,
+    range: BlockRange
+  ): Promise<Block> {
+    const parent = this._blockchainData.getBlockByNumber(
+      blockNumber.sub(new BN(1))
+    );
+    const header = {
+      coinbase: range.coinbaseAddress,
+      nonce: "0x0000000000000042",
+      timestamp: blockNumber
+        .sub(range.start)
+        .mul(new BN(range.interval))
+        .add(range.startTimestamp), // todo (xianny): check order of operations
+      parentHash: parent?.hash(),
+      stateRoot: range.stateRoot,
+    };
+    return Block.fromBlockData({ header });
+  }
+
+  // copypasta
+  private _computeTotalDifficulty(block: Block): BN {
+    const difficulty = new BN(block.header.difficulty);
+    if (block.header.parentHash.equals(zeros(32))) {
+      return difficulty;
+    }
+    const parentTD = this._blockchainData.getTotalDifficulty(
+      block.header.parentHash
+    );
+    if (parentTD === undefined) {
+      throw new Error("This should never happen");
+    }
+    return parentTD.add(difficulty);
+  }
+}
 export class HardhatBlockchain implements HardhatBlockchainInterface {
   private readonly _data = new BlockchainData();
   private _length = 0;
+  private readonly _blockRangeManager = new BlockRangeManager(this._data);
 
   public async getLatestBlock(): Promise<Block> {
-    const block = this._data.getBlockByNumber(new BN(this._length - 1));
-    if (block === undefined) {
+    const latestBlockNumber = new BN(this._length - 1);
+    const block = this._data.getBlockByNumber(latestBlockNumber);
+    if (block !== undefined) {
+      return block;
+    }
+    const blockIfInRange = await this._blockRangeManager.getBlock(
+      latestBlockNumber
+    );
+    if (blockIfInRange === undefined) {
       throw new Error("No block available");
     }
-    return block;
+    return blockIfInRange;
   }
 
   public async getBlock(
     blockHashOrNumber: Buffer | BN | number
   ): Promise<Block | null> {
-    if (typeof blockHashOrNumber === "number") {
-      return this._data.getBlockByNumber(new BN(blockHashOrNumber)) ?? null;
+    const isNumber = typeof blockHashOrNumber === "number";
+    const isBN = BN.isBN(blockHashOrNumber);
+    if (!isNumber && !isBN) {
+      return this._data.getBlockByHash(blockHashOrNumber as Buffer) ?? null;
     }
-    if (BN.isBN(blockHashOrNumber)) {
-      return this._data.getBlockByNumber(blockHashOrNumber) ?? null;
-    }
-    return this._data.getBlockByHash(blockHashOrNumber) ?? null;
+    const blockNumber: BN = isNumber
+      ? new BN(blockHashOrNumber)
+      : (blockHashOrNumber as BN);
+    return (
+      this._data.getBlockByNumber(blockNumber) ??
+      (await this._blockRangeManager.getBlock(blockNumber)) ??
+      null
+    );
   }
 
   public async addBlock(block: Block): Promise<Block> {
@@ -41,11 +153,15 @@ export class HardhatBlockchain implements HardhatBlockchainInterface {
     return block;
   }
 
-  public async addBlockRange(blocks: number, interval: number): Promise<void> {
-    // todo (xianny): handle more cases?
-    const lastBlock = this._length - 1;
-    this._data.addBlockRange(lastBlock, blocks, interval);
-    return;
+  public addBlockRange(range: BlockRange): void {
+    // todo (xianny): check against latest block too?
+    if (!range.start.eq(new BN(this._length))) {
+      throw new Error(
+        `Invalid block range: expected start block number ${this._length}, received ${range.start}`
+      );
+    }
+    this._blockRangeManager.addRange(range);
+    this._length = range.end.add(new BN(1)).toNumber();
   }
 
   public async putBlock(block: Block): Promise<void> {

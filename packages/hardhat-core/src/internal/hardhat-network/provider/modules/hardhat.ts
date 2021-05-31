@@ -158,18 +158,8 @@ export class HardhatModule {
   private async _mineAction(
     params: HardhatMineActionParams = { blocks: 1, interval: 1 }
   ): Promise<boolean> {
-    if (params.blocks === 1) {
-      const latestBlock = await this._node.getLatestBlock();
-      const timestamp = latestBlock.header.timestamp.add(
-        new BN(params.interval!)
-      );
-      const result = await this._node.mineBlock(timestamp);
-      await this._logBlock(result);
-      return true; // todo (xianny): should this return the null address instead? e.g. ./evm.ts -> _mineAction
-    }
-
-    await this._node.addBlockRange(params.blocks!, params.interval!);
-    // todo (xianny): logging?
+    await this._node.addBlockRange(params.blocks ?? 1, params.interval ?? 1);
+    // todo: (xianny): perform logging similar to intervalMineAction?
     return true;
   }
 
