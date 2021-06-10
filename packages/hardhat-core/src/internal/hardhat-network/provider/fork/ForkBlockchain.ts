@@ -19,7 +19,10 @@ import {
 } from "../output";
 import { ReadOnlyValidEIP2930Transaction } from "../transactions/ReadOnlyValidEIP2930Transaction";
 import { ReadOnlyValidTransaction } from "../transactions/ReadOnlyValidTransaction";
-import { HardhatBlockchainInterface } from "../types/HardhatBlockchainInterface";
+import {
+  BlockRange,
+  HardhatBlockchainInterface,
+} from "../types/HardhatBlockchainInterface";
 
 import { rpcToBlockData } from "./rpcToBlockData";
 import { rpcToTxData } from "./rpcToTxData";
@@ -77,6 +80,10 @@ export class ForkBlockchain implements HardhatBlockchainInterface {
     const totalDifficulty = await this._computeTotalDifficulty(block);
     this._data.addBlock(block, totalDifficulty);
     return block;
+  }
+
+  public async addBlockRange(range: BlockRange): Promise<void> {
+    // todo (xianny):
   }
 
   public async putBlock(block: Block): Promise<void> {

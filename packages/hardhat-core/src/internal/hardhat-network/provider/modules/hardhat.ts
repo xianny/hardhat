@@ -13,6 +13,8 @@ import {
   rpcQuantity,
 } from "../../../core/jsonrpc/types/base-types";
 import {
+  HardhatMineActionParams,
+  optionalHardhatMineParams,
   optionalRpcHardhatNetworkConfig,
   RpcHardhatNetworkConfig,
 } from "../../../core/jsonrpc/types/input/hardhat-network";
@@ -64,6 +66,9 @@ export class HardhatModule {
 
       case "hardhat_intervalMine":
         return this._intervalMineAction(...this._intervalMineParams(params));
+
+      case "hardhat_mine":
+        return this._mineAction(...this._mineParams(params));
 
       case "hardhat_stopImpersonatingAccount":
         return this._stopImpersonatingAction(
@@ -161,6 +166,20 @@ export class HardhatModule {
       }
     }
 
+    return true;
+  }
+
+  // hardhat_mine
+
+  private _mineParams(params: any[]): [HardhatMineActionParams | undefined] {
+    return validateParams(params, optionalHardhatMineParams); // todo: test that this fills in default values or returns undefined
+  }
+
+  private async _mineAction(
+    params: HardhatMineActionParams = { blocks: 1, interval: 1 }
+  ): Promise<boolean> {
+    await this._node.addBlockRange(params.blocks ?? 1, params.interval ?? 1);
+    // todo: (xianny): perform logging similar to intervalMineAction?
     return true;
   }
 
